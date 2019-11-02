@@ -1,4 +1,8 @@
-<div class="my-4 p-4 pb-2 bg-white rounded shadow">
+<div class="relative my-4 p-4 pb-2 bg-white rounded shadow">
+  <button type="button" class="absolute top-0 right-0 mt-2 mr-2 opacity-50 hover:opacity-75" data-delete-preview>
+    <span class="fa fa-times fa-fw"></span>
+  </button>
+
   @php
   // If `$prototype` is `true`, the array index will be replaced with
   // a placeholder value that must be replaced with JavaScript (see `$index`).

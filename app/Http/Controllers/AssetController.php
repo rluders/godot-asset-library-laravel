@@ -136,6 +136,7 @@ class AssetController extends Controller
         unset($assetInput['previews']);
         $asset->fill($assetInput);
 
+        // An asset must have at least one version
         foreach ($input['versions'] as $version) {
             $version['asset_id'] = $asset->asset_id;
             // Prototypes don't have an ID associated, so we fall back to -1 (which will never match)
@@ -145,13 +146,31 @@ class AssetController extends Controller
             );
         }
 
-        foreach ($input['previews'] as $preview) {
-            $preview['asset_id'] = $asset->asset_id;
-            // Prototypes don't have an ID associated, so we fall back to -1 (which will never match)
-            AssetPreview::updateOrCreate(
-                ['preview_id' => $preview['id'] ?? -1],
-                $preview
-            );
+        $existingPreviews = $asset->previews()->get();
+
+        // Previews are optional, so we need to check for existence of the input field first
+        if ($input['previews']) {
+            foreach ($input['previews'] as $preview) {
+                // Remove previews that were removed in the edit submission form
+                $shouldRemove = $existingPreviews->filter(function ($existingPreview) use ($preview) {
+                    return $existingPreview->id === $preview->id;
+                })->count() === 0;
+
+                if ($shouldRemove) {
+                }
+
+                $preview['asset_id'] = $asset->asset_id;
+                // Prototypes don't have an ID associated, so we fall back to -1 (which will never match)
+                AssetPreview::updateOrCreate(
+                    ['preview_id' => $preview['id'] ?? -1],
+                    $preview
+                );
+            }
+        } else {
+            // Remove all previews
+            foreach ($existingPreviews as $preview) {
+                $preview->delete();
+            }
         }
 
         $asset->save();
