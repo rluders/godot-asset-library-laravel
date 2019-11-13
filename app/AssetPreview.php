@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App;
 
+use Intervention\Image\Facades\Image;
 use Illuminate\Database\Eloquent\Model;
+use Intervention\Image\Exception\NotReadableException;
 
 class AssetPreview extends Model
 {
@@ -92,5 +94,24 @@ class AssetPreview extends Model
     public function getTypeAttribute(): string
     {
         return self::getType($this->type_id);
+    }
+
+    /**
+     * This fetches the image, computes its average color and stores it in the database.
+     * This color is then used as the image's background, which means it's visible
+     * while the image is loading. This in turn improves perceived peformance.
+     */
+    public function setLinkAttribute(string $link): void
+    {
+        $this->attributes['link'] = $link;
+
+        try {
+            $img = Image::make($this->thumbnail ?? $this->link);
+            $img->resize(1, 1);
+            $this->color = $img->pickColor(0, 0, 'hex');
+        } catch (NotReadableException $exception) {
+            // Do nothing if the URL isn't reachable
+            // (a default color is already set in the database)
+        }
     }
 }

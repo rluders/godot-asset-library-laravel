@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Paginator::defaultView('vendor/pagination/asset-library');
+
         AssetReview::observe(AssetReviewObserver::class);
     }
 }

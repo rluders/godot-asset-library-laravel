@@ -79,12 +79,13 @@
       {{-- Large image display --}}
       @if (count($asset->previews) >= 1 && $asset->previews[0]->type_id === $assetPreviewClass::TYPE_IMAGE)
       <a id="gallery-image-anchor" href="{{ $asset->previews[0]->link }}" target="_blank" rel="nofollow noopener noreferrer">
-        <div class="relative pb-9/16 bg-gray-400 rounded">
+        <div class="relative pb-9/16 rounded">
           <img
             id="gallery-image-big"
             src="{{ $asset->previews[0]->link }}"
             alt="{{ $asset->previews[0]->caption }}"
             class="absolute h-full w-full object-cover rounded"
+            style="background-color: {{ $asset->previews[0]->color }}"
           >
         </div>
       </a>
@@ -109,12 +110,13 @@
         @if ($preview->type_id === $assetPreviewClass::TYPE_IMAGE)
         <div class="w-1/4 px-px">
           <a href="{{ $preview->link }}" target="_blank" rel="nofollow noopener noreferrer">
-            <div class="relative pb-9/16 bg-gray-400 rounded">
+            <div class="relative pb-9/16 rounded">
               <img
                 src="{{ $preview->thumbnail }}"
                 alt="{{ $preview->caption }}"
                 class="absolute h-full w-full object-cover rounded gallery-image-small @if ($loop->first) gallery-image-small-active @else gallery-image-small-inactive @endif"
                 data-full-size="{{ $preview->link }}"
+                style="background-color: {{ $preview->color }}"
               >
             </div>
           </a>

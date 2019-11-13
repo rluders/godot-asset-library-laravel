@@ -42,9 +42,16 @@ class CreateAssetsTable extends Migration
             $table->text('browse_url');
             $table->text('issues_url')->nullable();
             $table->text('icon_url')->nullable();
+            $table
+                ->string('icon_color')
+                ->default('#808080')
+                ->comment('Hexadecimal color code (used as a placeholder while the icon is loading)');
             $table->dateTime('created_at');
             $table->dateTime('modify_date');
-            $table->integer('score')->default(0)->comment('Calculated from reviews (+1 for positive, -1 for negative)');
+            $table
+                ->integer('score')
+                ->default(0)
+                ->comment('Calculated from reviews (+1 for positive, -1 for negative)');
 
             $table->unsignedBigInteger('author_id');
             $table->foreign('author_id')->references('id')->on('users');

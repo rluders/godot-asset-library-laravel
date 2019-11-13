@@ -91,7 +91,11 @@ $description = __('Find add-ons, assets and scripts for your projects here.');
       <a href="{{ route('asset.show', ['asset' => $asset ]) }}">
         <article class="flex bg-white rounded shadow hover-active-darken">
           <div class="flex-shrink-0 self-center">
-            <img class="object-cover w-26 h-26 bg-gray-400 rounded-l" src="{{ $asset->icon_url }}">
+            <img
+              class="object-cover w-26 h-26 rounded-l"
+              src="{{ $asset->icon_url }}"
+              style="background-color: {{ $asset->icon_color }}"
+            >
           </div>
           {{--
             Offset the right panel slightly on the Y axis to make tags

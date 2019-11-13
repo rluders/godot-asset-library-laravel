@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App;
 
 use Illuminate\Support\Str;
+use Intervention\Image\Facades\Image;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
 use GrahamCampbell\Markdown\Facades\Markdown;
+use Intervention\Image\Exception\NotReadableException;
 use Lorisleiva\LaravelSearchString\Concerns\SearchString;
 
 class Asset extends Model
@@ -406,12 +408,26 @@ class Asset extends Model
 
     /**
      * Enforces HTTPS for the icon URL.
+     *
+     * This also fetches the image, computes its average color and stores it in the database.
+     * This color is then used as the image's background, which means it's visible
+     * while the image is loading. This in turn improves perceived peformance.
      */
     public function setIconUrlAttribute(string $iconUrl = null): void
     {
         // This field is nullable, so we check for the parameter first
         if ($iconUrl) {
             $this->attributes['icon_url'] = str_replace('http://', 'https://', $iconUrl);
+        }
+
+        try {
+            // Use the custom icon URL if defined, or use the inferred icon URL
+            $img = Image::make($this->getOriginal('icon_url') ?? $this->icon_url);
+            $img->resize(1, 1);
+            $this->icon_color = $img->pickColor(0, 0, 'hex');
+        } catch (NotReadableException $exception) {
+            // Do nothing if the URL isn't reachable
+            // (a default color is already set in the database)
         }
     }
 

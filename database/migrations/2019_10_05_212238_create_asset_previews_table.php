@@ -20,7 +20,11 @@ class CreateAssetPreviewsTable extends Migration
             $table->tinyInteger('type_id');
             $table->text('link');
             $table->text('thumbnail')->nullable();
-            $table->text('caption')->nullable();
+            $table->string('caption')->nullable();
+            $table
+                ->string('color')
+                ->default('#808080')
+                ->comment('Hexadecimal color code (used as a placeholder while the image is loading)');
 
             $table->unsignedBigInteger('asset_id');
             $table->foreign('asset_id')->references('asset_id')->on('assets');
