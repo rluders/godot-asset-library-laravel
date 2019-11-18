@@ -221,11 +221,14 @@ class AssetController extends Controller
         $review->author_id = Auth::user()->id ?? null;
         $review->save();
 
+        $flashMessage = __('Your review for “:asset” has been posted!', ['asset' => $asset->title]);
+
+        if (empty($request->input('comment'))) {
+            $flashMessage .= "\n".__("Since it has no comment attached, it won't be visible in the list (but its rating will still count towards the score).");
+        }
+
         $request->session()->flash('statusType', 'success');
-        $request->session()->flash(
-            'status',
-            __('Your review for “:asset” has been posted!', ['asset' => $asset->title])
-        );
+        $request->session()->flash('status', $flashMessage);
 
         return redirect(route('asset.show', $asset));
     }
