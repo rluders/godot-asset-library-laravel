@@ -304,6 +304,25 @@
       {!! $review->html_comment !!}
     </div>
 
+    @can('admin')
+    <form
+      method="POST"
+      action="{{ route($review->is_published ? 'asset.reviews.hide' : 'asset.reviews.unhide', ['asset_review' => $review]) }}"
+    >
+      @csrf
+      @method('PUT')
+
+      <button type="submit" class="mt-2 button button-sm text-red-700 opacity-75">
+        <span class="fa fa-fw mr-1 opacity-75 @if ($review->is_published) fa-eye-slash @else fa-eye @endif"></span>
+        @if ($review->is_published)
+        {{ __('Hide') }}
+        @else
+        {{ __('Unhide') }}
+        @endif
+      </button>
+    </form>
+    @endcan
+
     @if ($review->reply)
     <div class="content px-4 py-3 mt-6 ml-8 bg-gray-300 rounded relative text-sm">
       <div class="absolute border-gray-300 top-0 -mt-6 arrow-up"></div>

@@ -28,6 +28,10 @@ class CreateAssetReviewsTable extends Migration
                 ->text('html_comment')
                 ->nullable()
                 ->comment('Comment rendered as HTML (cached for performance)');
+            $table
+                ->boolean('is_published')
+                ->default(true)
+                ->comment('If `false`, the review will be hidden. It will only be visible to administrators');
             $table->timestamps();
 
             $table->unsignedBigInteger('asset_id');

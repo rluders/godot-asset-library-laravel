@@ -154,6 +154,11 @@ class AssetController extends Controller
         return redirect(route('asset.show', $asset));
     }
 
+    /**
+     * Publishes an asset (only effective if it has been unpublished).
+     * This can only be done by an administrator.
+     * Once published, the asset will be visible in the list of assets again.
+     */
     public function publish(Asset $asset, Request $request)
     {
         $asset->is_published = true;
@@ -171,6 +176,10 @@ class AssetController extends Controller
         return redirect(route('asset.show', $asset));
     }
 
+    /**
+     * Unpublishes an asset. This can only be done by an administrator.
+     * Once unpublished, the asset will no longer appear in the list of assets.
+     */
     public function unpublish(Asset $asset, Request $request)
     {
         $asset->is_published = false;
@@ -188,6 +197,11 @@ class AssetController extends Controller
         return redirect(route('asset.show', $asset));
     }
 
+    /**
+     * Mark an asset as archived. This can be done by its author or an administrator.
+     * Once an asset is archived, it can no longer receive any reviews.
+     * The asset can be unarchived at any time by its author or an administrator.
+     */
     public function archive(Asset $asset, Request $request)
     {
         $asset->is_archived = true;
@@ -205,6 +219,9 @@ class AssetController extends Controller
         return redirect(route('asset.show', $asset));
     }
 
+    /**
+     * Mark an asset as unarchived. This can be done by its author or an administrator.
+     */
     public function unarchive(Asset $asset, Request $request)
     {
         $asset->is_archived = false;
@@ -250,6 +267,59 @@ class AssetController extends Controller
         Log::info("$log.");
 
         return redirect(route('asset.show', $asset));
+    }
+
+    /**
+     * Hide a review. This can only be done by an administrator.
+     * Once a review is hidden, it can only be viewed by administrators.
+     */
+    public function hideReview(AssetReview $review, Request $request)
+    {
+        dump($review);
+        $review->is_published = false;
+        $review->save();
+
+        $user = $review->asset->review->author;
+
+        $request->session()->flash('statusType', 'success');
+        $request->session()->flash(
+            'status',
+            __(
+                ":user's review for “:asset” has been hidden!",
+                ['user' => $user->name, 'asset' => $review->asset->title]
+            )
+        );
+
+        $admin = Auth::user();
+        Log::info("$admin hid $user's review on $review->asset.");
+
+        return redirect(route('asset.show', $review->asset));
+    }
+
+    /**
+     * Unhide a review. This can only be done by an administrator.
+     * Once a review is no longer hidden, it can be viewed by everyone again.
+     */
+    public function unhideReview(AssetReview $review, Request $request)
+    {
+        $review->is_published = true;
+        $review->save();
+
+        $user = $review->asset->review->author;
+
+        $request->session()->flash('statusType', 'success');
+        $request->session()->flash(
+            'status',
+            __(
+                ":user's review for “:asset” is now visible again!",
+                ['user' => $user->name, 'asset' => $review->asset->title]
+            )
+        );
+
+        $admin = Auth::user();
+        Log::info("$admin unhid $user's review on $review->asset.");
+
+        return redirect(route('asset.show', $review->asset));
     }
 
     /**

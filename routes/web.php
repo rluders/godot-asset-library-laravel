@@ -28,6 +28,8 @@ Route::put('/asset/{asset}/publish', 'AssetController@publish')->name('asset.pub
 Route::put('/asset/{asset}/unpublish', 'AssetController@unpublish')->name('asset.unpublish')->middleware('can:admin');
 
 Route::post('/asset/{asset}/reviews', 'AssetController@storeReview')->name('asset.reviews.store')->middleware('can:submit-review,asset');
+Route::put('/asset/reviews/{asset_review}/hide', 'AssetController@hideReview')->name('asset.reviews.hide')->middleware('can:admin');
+Route::put('/asset/reviews/{asset_review}/unhide', 'AssetController@unhideReview')->name('asset.reviews.unhide')->middleware('can:admin');
 Route::post('/asset/reviews/{asset_review}', 'AssetController@storeReviewReply')->name('asset.reviews.replies.store')->middleware('can:submit-review-reply,asset_review');
 
 Route::get('/user/{user}', 'UserController@show')->name('user.show');
