@@ -36,8 +36,6 @@ class LoginController extends Controller
 
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct()
     {
@@ -65,24 +63,26 @@ class LoginController extends Controller
         $userSocial = Socialite::driver($provider)->user();
 
         // Check if the user is already registered
-        $currentUser = User::where(['email' => $userSocial->getEmail()])->first();
+        $user = User::where(['email' => $userSocial->getEmail()])->first();
 
-        if ($currentUser) {
-            // Log in as the existing user
-            Auth::login($currentUser);
-        } else {
+        if (! $user) {
             // Register a new account and log in.
             // The email address is always considered verified,
             // as the OAuth2 provider has most likely verified it before.
             $user = new User();
-            $user->fill([
-                'username' => $userSocial->getNickname(),
-                'email' => $userSocial->getEmail(),
-                'provider' => $provider,
-                'provider_id' => $userSocial->getId(),
-            ])->markEmailAsVerified();
+            $user->fill(
+                [
+                    'username' => $userSocial->getNickname(),
+                    'email' => $userSocial->getEmail(),
+                    'provider' => $provider,
+                    'provider_id' => $userSocial->getId(),
+                ]
+            )->markEmailAsVerified();
 
-            Log::info("$user registered a new user account using the \"$provider\" OAuth2 provider.");
+            info("$user registered a new user account using the \"$provider\" OAuth2 provider.");
+        }
+
+        if ($user) {
             Auth::login($user);
         }
 

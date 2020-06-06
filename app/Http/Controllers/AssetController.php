@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Asset\ArchiveAssetAction;
+use App\Actions\Asset\PublishAssetAction;
+use App\Actions\Asset\StoreAssetAction;
+use App\Actions\Asset\UnarchiveAssetAction;
+use App\Actions\Asset\UnpublishAssetAction;
+use App\Actions\Asset\UpdateAssetAction;
 use App\Http\Requests\ListAssets;
 use App\Http\Requests\SubmitAsset;
-use App\Http\Requests\SubmitReview;
-use App\Http\Requests\SubmitReviewReply;
 use App\Models\Asset;
-use App\Models\AssetPreview;
-use App\Models\AssetReview;
-use App\Models\AssetReviewReply;
-use App\Models\AssetVersion;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -33,8 +31,14 @@ class AssetController extends Controller
         $page = $validated['page'] ?? 1;
 
         $assets = Asset::with('author', 'versions')->filterSearch($validated);
+
+        $sliced = $assets->slice(
+            intval(($page - 1) * $itemsPerPage),
+            $itemsPerPage
+        )->values();
+
         $paginator = new LengthAwarePaginator(
-            $assets->slice(intval(($page - 1) * $itemsPerPage), $itemsPerPage)->values(),
+            $sliced,
             $assets->count(),
             $itemsPerPage
         );
@@ -63,36 +67,13 @@ class AssetController extends Controller
     /**
      * Insert a newly created asset into the database.
      */
-    public function store(SubmitAsset $request): RedirectResponse
-    {
-        $input = $request->validated();
-
-        // Remove submodel information from the input array as we don't want it here
-        $assetInput = $input;
-        unset($assetInput['versions']);
-        unset($assetInput['previews']);
-        $asset = new Asset();
-        $asset->fill($assetInput);
-        // The user must be authenticated to submit an asset.
-        $asset->author_id = (int) Auth::id();
-
-        // Save the asset without its submodels, so that submodels can be saved.
-        // This must be done *before* creating submodels, otherwise the asset ID
-        // can't be fetched by Eloquent.
-        $asset->save();
-
-        // Create and save the version and preview submodels
-
-        if (array_key_exists('versions', $input)) {
-            $asset->versions()->createMany($input['versions']);
-        }
-
-        if (array_key_exists('previews', $input)) {
-            $asset->previews()->createMany($input['previews']);
-        }
-
-        // Save the asset with its submodels
-        $asset->save();
+    public function store(
+        SubmitAsset $request,
+        StoreAssetAction $action
+    ): RedirectResponse {
+        $data = $request->validated();
+        // Execute the action to create the asset
+        $asset = $action->execute((int) auth()->id(), $data);
 
         $request->session()->flash('statusType', 'success');
         $request->session()->flash(
@@ -100,8 +81,8 @@ class AssetController extends Controller
             __('Your asset “:asset” has been submitted!', ['asset' => $asset->title])
         );
 
-        $author = Auth::user();
-        Log::info("$author submitted the asset $asset.");
+        $author = auth()->user();
+        info("$author created the asset $asset.");
 
         return redirect(route('asset.show', $asset));
     }
@@ -111,52 +92,24 @@ class AssetController extends Controller
      */
     public function edit(Asset $asset): View
     {
-        return view('asset.create', [
-            'editing' => true,
-            'asset' => $asset,
-        ]);
+        // @FIXME It is not a good practice - unnecessarily increases the template complexity
+        return view('asset.create', ['editing' => true, 'asset' => $asset]);
     }
 
     /**
      * Store modifications to an existing asset.
      */
-    public function update(Asset $asset, SubmitAsset $request): RedirectResponse
-    {
-        $input = $request->validated();
+    public function update(
+        Asset $asset,
+        SubmitAsset $request,
+        UpdateAssetAction $action
+    ): RedirectResponse {
+        $data = $request->validated();
+        // Execute the action to update the asset
+        $asset = $action->execute($asset, $data);
 
-        // Remove submodel information from the input array as we don't want it here.
-        // Instead, we update (or create) submodels a few lines below.
-        $assetInput = $input;
-        unset($assetInput['versions']);
-        unset($assetInput['previews']);
-        $asset->fill($assetInput);
-
-        if (array_key_exists('versions', $input)) {
-            foreach ($input['versions'] as $version) {
-                $version['asset_id'] = $asset->asset_id;
-                // Prototypes don't have an ID associated, so we fall back to -1 (which will never match)
-                AssetVersion::updateOrCreate(
-                    ['id' => $version['id'] ?? -1],
-                    $version
-                );
-            }
-        }
-
-        if (array_key_exists('previews', $input)) {
-            foreach ($input['previews'] as $preview) {
-                $preview['asset_id'] = $asset->asset_id;
-                // Prototypes don't have an ID associated, so we fall back to -1 (which will never match)
-                AssetPreview::updateOrCreate(
-                    ['preview_id' => $preview['id'] ?? -1],
-                    $preview
-                );
-            }
-        }
-
-        $asset->save();
-
-        $author = Auth::user();
-        Log::info("$author updated the asset $asset.");
+        $author = auth()->user();
+        info("$author updated the asset $asset.");
 
         return redirect(route('asset.show', $asset));
     }
@@ -166,19 +119,19 @@ class AssetController extends Controller
      * This can only be done by an administrator.
      * Once published, the asset will be visible in the list of assets again.
      */
-    public function publish(Asset $asset, Request $request): RedirectResponse
-    {
-        $asset->is_published = true;
-        $asset->save();
+    public function publish(
+        Asset $asset,
+        Request $request,
+        PublishAssetAction $action
+    ): RedirectResponse {
+        // Execute the action to publish the asset
+        $asset = $action->execute($asset);
 
         $request->session()->flash('statusType', 'success');
-        $request->session()->flash(
-            'status',
-            __('The asset is now public again.')
-        );
+        $request->session()->flash('status', __('The asset is now public again.'));
 
-        $admin = Auth::user();
-        Log::info("$admin unpublished $asset.");
+        $admin = auth()->user();
+        info("$admin unpublished $asset.");
 
         return redirect(route('asset.show', $asset));
     }
@@ -187,19 +140,19 @@ class AssetController extends Controller
      * Unpublishes an asset. This can only be done by an administrator.
      * Once unpublished, the asset will no longer appear in the list of assets.
      */
-    public function unpublish(Asset $asset, Request $request): RedirectResponse
-    {
-        $asset->is_published = false;
-        $asset->save();
+    public function unpublish(
+        Asset $asset,
+        Request $request,
+        UnpublishAssetAction $action
+    ): RedirectResponse {
+        // Execute the action to unpublish the asset
+        $asset = $action->execute($asset);
 
         $request->session()->flash('statusType', 'success');
-        $request->session()->flash(
-            'status',
-            __('The asset is no longer public.')
-        );
+        $request->session()->flash('status', __('The asset is no longer public.'));
 
-        $admin = Auth::user();
-        Log::info("$admin published $asset.");
+        $admin = auth()->user();
+        info("$admin published $asset.");
 
         return redirect(route('asset.show', $asset));
     }
@@ -209,19 +162,26 @@ class AssetController extends Controller
      * Once an asset is archived, it can no longer receive any reviews.
      * The asset can be unarchived at any time by its author or an administrator.
      */
-    public function archive(Asset $asset, Request $request): RedirectResponse
-    {
-        $asset->is_archived = true;
-        $asset->save();
+    public function archive(
+        Asset $asset,
+        Request $request,
+        ArchiveAssetAction $action
+    ): RedirectResponse {
+        // Execute the action to archive the asset
+        $asset = $action->execute($asset);
 
         $request->session()->flash('statusType', 'success');
         $request->session()->flash(
             'status',
-            __('The asset is now marked as archived. Users can no longer leave reviews, but it can still be downloaded.')
+            __(
+                'The asset is now marked as archived.
+                 Users can no longer leave reviews, but it
+                 can still be downloaded.'
+            )
         );
 
-        $user = Auth::user();
-        Log::info("$user archived $asset.");
+        $user = auth()->user();
+        info("$user archived $asset.");
 
         return redirect(route('asset.show', $asset));
     }
@@ -230,10 +190,13 @@ class AssetController extends Controller
      * Mark an asset as unarchived.
      * This can be done by its author or an administrator.
      */
-    public function unarchive(Asset $asset, Request $request): RedirectResponse
-    {
-        $asset->is_archived = false;
-        $asset->save();
+    public function unarchive(
+        Asset $asset,
+        Request $request,
+        UnarchiveAssetAction $action
+    ): RedirectResponse {
+        // Execute the action to unarchive the asset
+        $asset = $action->execute($asset);
 
         $request->session()->flash('statusType', 'success');
         $request->session()->flash(
@@ -241,132 +204,9 @@ class AssetController extends Controller
             __('The asset is no longer marked as archived. Welcome back!')
         );
 
-        $user = Auth::user();
-        Log::info("$user unarchived $asset.");
+        $user = auth()->user();
+        info("$user unarchived $asset.");
 
         return redirect(route('asset.show', $asset));
-    }
-
-    /**
-     * Insert a newly created review into the database.
-     */
-    public function storeReview(Asset $asset, SubmitReview $request): RedirectResponse
-    {
-        $review = new AssetReview();
-        $review->fill($request->validated());
-        $review->asset_id = $asset->asset_id;
-        $review->author_id = (int) Auth::id();
-        $review->save();
-
-        $request->session()->flash('statusType', 'success');
-        $request->session()->flash(
-            'status',
-            __('Your review for “:asset” has been posted!', ['asset' => $asset->title])
-        );
-
-        $user = Auth::user();
-        $rating = $review->is_positive ? 'positive' : 'negative';
-        $log = "$user submitted a $rating review for $asset";
-
-        if ($review->comment) {
-            $log .= ' with a comment';
-        }
-
-        Log::info("$log.");
-
-        return redirect(route('asset.show', $asset));
-    }
-
-    /**
-     * Update an existing review in the database.
-     */
-    public function updateReview(AssetReview $assetReview, SubmitReview $request): RedirectResponse
-    {
-        $assetReview->fill($request->validated());
-        $assetReview->save();
-
-        $asset = $assetReview->asset;
-        $user = Auth::user();
-
-        if ($assetReview->author && $asset && $user) {
-            if ($assetReview->author_id === $user->id) {
-                $request->session()->flash('statusType', 'success');
-                $request->session()->flash(
-                    'status',
-                    __('You edited your review for “:asset”!', ['asset' => $asset->title])
-                );
-
-                Log::info("$user edited their review for $asset.");
-            } else {
-                $request->session()->flash('statusType', 'success');
-                $request->session()->flash(
-                    'status',
-                    __("You edited :author's review for “:asset”!", ['author' => $assetReview->author->username, 'asset' => $asset->title])
-                );
-
-                Log::info("$user edited $assetReview->author's review for $asset.");
-            }
-        }
-
-        return redirect(route('asset.show', $asset));
-    }
-
-    /**
-     * Remove a review from the database.
-     * This can only done by its author or an administrator.
-     */
-    public function destroyReview(AssetReview $assetReview, Request $request): RedirectResponse
-    {
-        $asset = $assetReview->asset;
-        $user = Auth::user();
-        $author = $assetReview->author;
-
-        $assetReview->delete();
-
-        $request->session()->flash('statusType', 'success');
-
-        if ($assetReview->author && $asset && $user && $author) {
-            if ($user->is_admin && $assetReview->author->id !== $user->id) {
-                $request->session()->flash(
-                    'status',
-                    __("You removed :author's review for “:asset”!", ['author' => $author->username, 'asset' => $asset->title])
-                );
-
-                Log::info("$user removed $author's review for $asset.");
-            } else {
-                $request->session()->flash(
-                    'status',
-                    __('You removed your review for “:asset”!', ['asset' => $asset->title])
-                );
-
-                Log::info("$user removed their review for $asset.");
-            }
-        }
-
-        return redirect(route('asset.show', $asset));
-    }
-
-    /**
-     * Update a review with a reply from the asset author.
-     */
-    public function storeReviewReply(AssetReview $assetReview, SubmitReviewReply $request): RedirectResponse
-    {
-        $reviewReply = new AssetReviewReply();
-        $reviewReply->fill($request->validated());
-        $reviewReply->asset_review_id = $assetReview->id;
-        $reviewReply->save();
-
-        if ($assetReview->author) {
-            $request->session()->flash('statusType', 'success');
-            $request->session()->flash(
-                'status',
-                __("Your reply to :author's review has been posted!", ['author' => $assetReview->author->username])
-            );
-
-            $author = Auth::user();
-            Log::info("$author replied to $assetReview->author's review for $assetReview->asset.");
-        }
-
-        return redirect(route('asset.show', $assetReview->asset));
     }
 }

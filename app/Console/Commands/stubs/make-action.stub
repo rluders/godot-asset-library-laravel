@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace DummyNamespace;
+
+/**
+ * DummyClass Action
+ */
+class DummyClass
+{
+    /**
+     * Class construtor
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    /**
+     * Execute the action
+     */
+    public function execute(array $data): void
+    {
+        //
+    }
+}
