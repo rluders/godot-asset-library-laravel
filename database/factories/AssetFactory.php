@@ -57,3 +57,19 @@ $factory->state(
         'is_archived' => false,
     ]
 );
+
+$factory->state(
+    App\Models\Asset::class,
+    'published',
+    [
+        'is_published' => true,
+    ]
+);
+
+$factory->state(
+    App\Models\Asset::class,
+    'unpublished',
+    [
+        'is_published' => false,
+    ]
+);
