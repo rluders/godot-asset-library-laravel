@@ -82,9 +82,7 @@ class LoginController extends Controller
             info("$user registered a new user account using the \"$provider\" OAuth2 provider.");
         }
 
-        if ($user) {
-            Auth::login($user);
-        }
+        Auth::login($user);
 
         return redirect(route('asset.index'));
     }
