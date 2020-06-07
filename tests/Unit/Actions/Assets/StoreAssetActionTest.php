@@ -15,7 +15,7 @@ class StoreAssetActionTest extends TestCase
      *
      * @return void
      */
-    public function testCanStoreAsset()
+    public function testCanStore()
     {
         $user = factory(\App\Models\User::class)->create();
 
