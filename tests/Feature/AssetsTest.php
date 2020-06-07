@@ -6,15 +6,13 @@ namespace Tests\Feature;
 
 use App\Models\Asset;
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AssetsTest extends TestCase
 {
-    // https://stackoverflow.com/questions/42350138/how-to-seed-database-migrations-for-laravel-tests
-    use RefreshDatabase {
-        refreshDatabase as baseRefreshDatabase;
-    }
+    use RefreshDatabase, DatabaseMigrations;
 
     public const ASSET_DATA = [
         'title' => 'My Own Asset',
@@ -28,9 +26,9 @@ class AssetsTest extends TestCase
         'browse_url' => 'https://github.com/user/asset',
     ];
 
-    public function refreshDatabase(): void
+    public function setUp(): void
     {
-        $this->baseRefreshDatabase();
+        parent::setUp();
         $this->seed();
     }
 

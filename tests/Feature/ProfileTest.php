@@ -5,19 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
 {
-    // https://stackoverflow.com/questions/42350138/how-to-seed-database-migrations-for-laravel-tests
-    use RefreshDatabase {
-        refreshDatabase as baseRefreshDatabase;
-    }
+    use RefreshDatabase, DatabaseMigrations;
 
-    public function refreshDatabase(): void
+    public function setUp(): void
     {
-        $this->baseRefreshDatabase();
+        parent::setUp();
         $this->seed();
     }
 
